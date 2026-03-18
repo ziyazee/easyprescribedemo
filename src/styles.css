@@ -1,0 +1,173 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+}
+
+.medical-pattern-bg {
+  background-color: #f6f8f8;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%230ea4a4' fill-opacity='0.05' fill-rule='evenodd'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input:not([type='checkbox']):not([type='radio']),
+textarea,
+select {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+@media print {
+  @page { margin: 8mm; }
+  html, body {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .no-print, [data-no-print] { display: none !important; }
+  .print-only { display: block !important; }
+
+  /* Strip all wrapper chrome */
+  .print-container-wrapper {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    background: white !important;
+    height: auto !important;
+    min-height: 0 !important;
+    display: block !important;
+  }
+  .print-container {
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+    width: 100% !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* ── Repeating header & footer via table trick ── */
+  .rx-page-table {
+    display: table !important;
+    width: 100% !important;
+  }
+  .rx-page-header {
+    display: table-header-group !important;
+  }
+  .rx-page-footer {
+    display: table-footer-group !important;
+  }
+  .rx-page-header > tr > td,
+  .rx-page-footer > tr > td {
+    padding: 0 !important;
+  }
+
+  /* Force header content to row layout */
+  .rx-page-header div:first-child {
+    flex-direction: row !important;
+    align-items: center !important;
+  }
+
+  /* Force patient info grid to 4 columns */
+  .print-container .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  /* Force nested tables to full width and prevent row breaks */
+  .print-container table {
+    width: 100% !important;
+  }
+  .print-container tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Compact spacing for print — shrink padding to fit more on one page */
+  .rx-page-body {
+    padding: 16px 24px !important;
+  }
+  .rx-section-patient { margin-bottom: 12px !important; }
+  .rx-section-meds { margin-bottom: 12px !important; }
+  .rx-section-advice { margin-bottom: 8px !important; }
+  .rx-section-patient .grid { padding: 8px !important; gap: 8px !important; }
+  .rx-section-meds td, .rx-section-meds th { padding: 4px 10px !important; }
+  .rx-section-advice ul { line-height: 1.4 !important; }
+  .rx-section-advice .bg-slate-50 { padding: 8px 12px !important; }
+
+  /* Advice sections are allowed to break to next page */
+  .rx-section-advice {
+    page-break-before: auto;
+    break-before: auto;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Keep medications together — don't split the table */
+  .rx-section-meds {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Hide editable input borders for clean print */
+  .print-container input {
+    border: none !important;
+    border-bottom: none !important;
+    padding: 0 !important;
+  }
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
