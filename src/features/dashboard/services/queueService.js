@@ -8,6 +8,7 @@ export async function addToQueue(doctorUserUid, patient) {
     gender: patient.gender,
     age: patient.age,
     complaint: patient.complaint,
+    allergies: patient.allergies,
     priority: patient.priority || false,
   });
 }

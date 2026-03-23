@@ -180,12 +180,37 @@ function createSeedPrescription(doctorUserUid, patientName, patientPhone, patien
   };
 }
 
+function createAdilSeedPrescription(doctorUserUid) {
+  return {
+    ...createSeedPrescription(
+      doctorUserUid,
+      'Adil Khan',
+      '9012345678',
+      28,
+      'Male',
+      'Dental Pain',
+      [
+        { name: 'Amoxicillin 500mg', dosage: '500mg', frequency: '1-0-1', duration: '5 days', instructions: 'After Food' },
+        { name: 'Paracetamol 650mg', dosage: '650mg', frequency: '1-1-1', duration: '3 days', instructions: 'After Food' },
+      ],
+      'Soft diet;Avoid very hot or cold foods',
+      'Follow up if pain persists',
+      0,
+    ),
+    patientDateOfBirth: '1996-08-17',
+    patientBloodGroup: 'B+',
+    patientComplaint: 'Pain in upper right molar region for 3 days',
+    patientAllergies: 'No known allergies',
+  };
+}
+
 function buildInitialDb() {
   const doctorUserUid = 'doctor_demo_1';
   const receptionistUserUid = 'reception_demo_1';
   const smartTags = seedSmartTags();
 
   const demoPrescriptions = [
+    createAdilSeedPrescription(doctorUserUid),
     createSeedPrescription(
       doctorUserUid,
       'Riya Sen',
@@ -291,6 +316,7 @@ function hydratePatientsFromPrescriptions(db) {
       phone: localPhone,
       gender: prescription.patientGender || '',
       age: prescription.patientAge || '',
+      dateOfBirth: prescription.patientDateOfBirth || '',
       bloodGroup: prescription.patientBloodGroup || '',
       createdAt: prescription.createdAt,
       updatedAt: prescription.createdAt,
@@ -305,7 +331,10 @@ function hydratePatientsFromPrescriptions(db) {
     existing.prescriptionCount += 1;
     existing.updatedAt = prescription.createdAt;
     existing.lastVisitDate = prescription.createdAt;
+    existing.dateOfBirth = prescription.patientDateOfBirth || existing.dateOfBirth || '';
+    existing.bloodGroup = prescription.patientBloodGroup || existing.bloodGroup || '';
     existing.complaint = prescription.diagnosis || existing.complaint || '';
+    existing.allergies = prescription.patientAllergies || existing.allergies || '';
     map.set(key, existing);
   });
 
@@ -326,11 +355,30 @@ function writeRawDb(db) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
 }
 
+function ensureDemoSeedData(db) {
+  const doctorUserUid = 'doctor_demo_1';
+  const hasAdilPrescription = db.prescriptions?.some((item) => item.doctorUserUid === doctorUserUid && item.patientName === 'Adil Khan');
+
+  if (!hasAdilPrescription) {
+    db.prescriptions = db.prescriptions || [];
+    db.prescriptions.unshift(createAdilSeedPrescription(doctorUserUid));
+    hydratePatientsFromPrescriptions(db);
+  }
+
+  return db;
+}
+
 export function getDb() {
   let db = readRawDb();
   if (!db) {
     db = buildInitialDb();
     hydratePatientsFromPrescriptions(db);
+    writeRawDb(db);
+  } else {
+    const nextDb = ensureDemoSeedData(db);
+    if (nextDb !== db) {
+      db = nextDb;
+    }
     writeRawDb(db);
   }
   return db;
@@ -420,12 +468,14 @@ function upsertPatientFromPrescription(db, prescription) {
     existing.name = prescription.patientName;
     existing.gender = prescription.patientGender || existing.gender;
     existing.age = prescription.patientAge || existing.age;
+    existing.dateOfBirth = prescription.patientDateOfBirth || existing.dateOfBirth;
     existing.bloodGroup = prescription.patientBloodGroup || existing.bloodGroup;
     existing.updatedAt = prescription.createdAt;
     existing.lastVisitDate = prescription.createdAt;
     existing.totalVisits = (existing.totalVisits || 0) + 1;
     existing.prescriptionCount = (existing.prescriptionCount || 0) + 1;
-    existing.complaint = prescription.diagnosis || existing.complaint || '';
+    existing.complaint = prescription.patientComplaint || prescription.diagnosis || existing.complaint || '';
+    existing.allergies = prescription.patientAllergies || existing.allergies || '';
     return existing;
   }
 
@@ -436,6 +486,7 @@ function upsertPatientFromPrescription(db, prescription) {
     phone: localPhone,
     gender: prescription.patientGender || '',
     age: prescription.patientAge || '',
+    dateOfBirth: prescription.patientDateOfBirth || '',
     bloodGroup: prescription.patientBloodGroup || '',
     createdAt: prescription.createdAt,
     updatedAt: prescription.createdAt,
@@ -443,7 +494,8 @@ function upsertPatientFromPrescription(db, prescription) {
     totalVisits: 1,
     prescriptionCount: 1,
     doctorUserUid: prescription.doctorUserUid,
-    complaint: prescription.diagnosis || '',
+    complaint: prescription.patientComplaint || prescription.diagnosis || '',
+    allergies: prescription.patientAllergies || '',
     status: 'treated',
   };
   db.patients.unshift(patient);
@@ -736,6 +788,10 @@ export async function demoApiRequest(method, path, body) {
       dateOfBirth: patient.dateOfBirth || '',
       bloodGroup: patient.bloodGroup || '',
       complaint: patient.complaint || '',
+      allergies: patient.allergies || '',
+      lastVisitDate: patient.lastVisitDate || '',
+      totalVisits: patient.totalVisits || 0,
+      prescriptionCount: patient.prescriptionCount || 0,
     };
   }
 
@@ -821,6 +877,7 @@ export async function demoApiRequest(method, path, body) {
         age: body.age || 0,
         gender: body.gender || '',
         complaint: body.complaint || '',
+        allergies: body.allergies || '',
         priority: !!body.priority,
         status: 'WAITING',
         tokenNumber,
@@ -836,6 +893,7 @@ export async function demoApiRequest(method, path, body) {
           phone: normalizePhone(body.patientPhone),
           gender: body.gender || '',
           age: body.age || '',
+          dateOfBirth: '',
           bloodGroup: '',
           createdAt,
           updatedAt: createdAt,
@@ -844,8 +902,17 @@ export async function demoApiRequest(method, path, body) {
           prescriptionCount: 0,
           doctorUserUid: body.doctorUserUid,
           complaint: body.complaint || '',
+          allergies: body.allergies || '',
           status: 'waiting',
         });
+      } else {
+        patient.fullName = body.patientName || patient.fullName;
+        patient.name = body.patientName || patient.name;
+        patient.gender = body.gender || patient.gender;
+        patient.age = body.age || patient.age;
+        patient.complaint = body.complaint || patient.complaint || '';
+        patient.allergies = body.allergies || patient.allergies || '';
+        patient.updatedAt = createdAt;
       }
 
       draft.__response = deepClone(entry);

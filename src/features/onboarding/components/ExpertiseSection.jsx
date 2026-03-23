@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 
 const SPECIALTIES = [
   { id: 'general-practice', name: 'General Practice', icon: 'stethoscope', description: 'Primary care & family medicine' },
+  { id: 'dentist', name: 'Dentist', icon: 'dentistry', description: 'Dental care, oral health & treatment' },
   { id: 'cardiology', name: 'Cardiology', icon: 'cardiology', description: 'Heart & vascular systems' },
   { id: 'dermatology', name: 'Dermatology', icon: 'dermatology', description: 'Skin, hair & nails' },
   { id: 'pediatrics', name: 'Pediatrics', icon: 'child_care', description: 'Infants, children & adolescents' },

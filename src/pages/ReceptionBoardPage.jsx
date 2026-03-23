@@ -15,6 +15,7 @@ function mapEntry(e) {
     gender: e.gender || '',
     age: e.age || 0,
     complaint: e.complaint || '',
+    allergies: e.allergies || '',
     status: statusMap[e.status] || 'waiting',
     priority: e.priority || false,
     waitMins: 0,
@@ -91,6 +92,9 @@ export function ReceptionBoardPage({ onNavigate, userSession }) {
           setLookupStatus('found');
           setFullName(patient.fullName);
           setGender(patient.gender || 'Male');
+          setAllergies(patient.allergies || '');
+          setSelectedComplaints([]);
+          setComplaintDetail(patient.complaint || '');
           if (patient.dateOfBirth) setDob(patient.dateOfBirth);
           return;
         }
@@ -102,10 +106,14 @@ export function ReceptionBoardPage({ onNavigate, userSession }) {
         setLookupStatus('found');
         setFullName(existing.name);
         setGender(existing.gender);
+        setAllergies(existing.allergies || '');
+        setComplaintDetail(existing.complaint || '');
       } else {
         setLookupStatus('new');
         setFullName('');
         setGender('Male');
+        setAllergies('');
+        setComplaintDetail('');
       }
     } else {
       setLookupStatus('idle');
@@ -128,6 +136,7 @@ export function ReceptionBoardPage({ onNavigate, userSession }) {
         gender,
         age,
         complaint,
+        allergies,
         priority: isPriority,
       });
       const mapped = mapEntry(entry);

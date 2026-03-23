@@ -19,6 +19,7 @@ const STATE_OPTIONS = [
 
 const SPECIALTIES = [
   { id: 'general-practice', name: 'General Practice', icon: 'stethoscope' },
+  { id: 'dentist', name: 'Dentist', icon: 'dentistry' },
   { id: 'cardiology', name: 'Cardiology', icon: 'cardiology' },
   { id: 'dermatology', name: 'Dermatology', icon: 'dermatology' },
   { id: 'pediatrics', name: 'Pediatrics', icon: 'child_care' },

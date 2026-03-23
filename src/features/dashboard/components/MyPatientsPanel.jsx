@@ -198,7 +198,18 @@ export function MyPatientsPanel({ userSession, onNavigate }) {
                     <button
                       type="button"
                       className="h-7 px-2.5 rounded-md text-[11px] font-semibold text-[#1f7a5c] bg-[#1f7a5c]/8 border border-[#1f7a5c]/15 hover:bg-[#1f7a5c] hover:text-white hover:border-[#1f7a5c] transition-all flex items-center gap-1"
-                      onClick={() => onNavigate?.('/new-prescription/details', { patient: { fullName: name, phone, gender, age } })}
+                      onClick={() => onNavigate?.('/new-prescription/details', {
+                        patient: {
+                          fullName: name,
+                          phone,
+                          gender,
+                          age,
+                          complaint: patient.complaint || '',
+                          allergies: patient.allergies || '',
+                          dateOfBirth: patient.dateOfBirth || '',
+                          bloodGroup: patient.bloodGroup || '',
+                        },
+                      })}
                     >
                       <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>add</span>
                       <span className="hidden sm:inline">Prescribe</span>

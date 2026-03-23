@@ -15,6 +15,27 @@ import iconEyedrop from '../../../assets/med-icons/eyedrop.png';
 
 const normalizePhone = (value) => value.replace(/\D/g, '').slice(0, 10);
 
+const DEFAULT_DEMO_PATIENT = {
+  fullName: 'Adil Khan',
+  phone: '9012345678',
+  gender: 'Male',
+  age: '28',
+  dateOfBirth: '1996-08-17',
+  bloodGroup: 'B+',
+  complaint: 'Pain in upper right molar region for 3 days',
+  allergies: 'No known allergies',
+  lastVisitDate: new Date().toISOString(),
+  totalVisits: '1',
+  prescriptionCount: '1',
+};
+
+function formatDisplayDate(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 
 function normalizeTagName(value) {
   return String(value || '').replace(/^#/, '').trim();
@@ -118,6 +139,91 @@ function buildMedicationFromName(name) {
 
 const DRAFT_KEY = 'ep_prescription_draft';
 
+const TOOTH_STATUS_OPTIONS = [
+  {
+    value: 'decayed',
+    label: 'Decayed',
+    swatchClassName: 'bg-red-500',
+    borderClassName: 'border-red-300 shadow-[0_0_0_1px_rgba(239,68,68,0.14)]',
+    ringClassName: 'ring-red-200',
+  },
+  {
+    value: 'filled',
+    label: 'Filled',
+    swatchClassName: 'bg-[#1f7a5c]',
+    borderClassName: 'border-[#1f7a5c] shadow-[0_0_0_1px_rgba(31,122,92,0.16)]',
+    ringClassName: 'ring-[#1f7a5c]/20',
+  },
+  {
+    value: 'missing',
+    label: 'Missing',
+    swatchClassName: 'bg-yellow-400',
+    borderClassName: 'border-yellow-300 shadow-[0_0_0_1px_rgba(250,204,21,0.16)]',
+    ringClassName: 'ring-yellow-200',
+  },
+];
+
+const TOOTH_STATUS_MAP = TOOTH_STATUS_OPTIONS.reduce((map, option) => {
+  map[option.value] = option;
+  return map;
+}, {});
+
+const ODONTOGRAM_ROWS = [
+  { label: 'UPPER', teeth: ['18', '17', '16', '15', '14', '13', '12', '11', '21', '22', '23', '24', '25', '26', '27', '28'] },
+  { label: 'LOWER', teeth: ['48', '47', '46', '45', '44', '43', '42', '41', '31', '32', '33', '34', '35', '36', '37', '38'] },
+];
+
+const SOFT_TISSUE_TAGS = [
+  'White patch or red patch',
+  'Ulcer',
+  'Tongue disorders',
+  'Smokers palate',
+];
+
+const PERIODONTAL_EVALUATION_TAGS = [
+  'Stains',
+  'Calculus',
+  'Debri',
+  'Plaque',
+  'Attachment loss',
+  'Furcation involvement',
+  'Mobility',
+  'Recession',
+];
+
+const ORTHODONTIC_EVALUATION_TAGS = [
+  'Crowding',
+  'Spacing',
+  'Deep bite',
+  'Crossbite',
+  'Class 2 malocclusion',
+  'Class 3 malocclusion',
+];
+
+const EXTRAORAL_EXAM_OPTIONS = {
+  lips: ['Competant', 'Incompetant', 'Potentially competant'],
+  tmj: ['Deviation present', 'Not present'],
+  lymphNodes: ['Palpable', 'No'],
+};
+
+function buildPatientForm(source = {}, overrides = {}) {
+  return {
+    fullName: source.fullName || source.name || '',
+    age: source.age ? String(source.age) : '',
+    gender: source.gender || 'Male',
+    phone: normalizePhone(source.phone || ''),
+    dateOfBirth: source.dateOfBirth || '',
+    bloodGroup: source.bloodGroup || '',
+    complaint: source.complaint || '',
+    allergies: source.allergies || '',
+    lastVisitDate: source.lastVisitDate || '',
+    totalVisits: source.totalVisits ? String(source.totalVisits) : '',
+    prescriptionCount: source.prescriptionCount ? String(source.prescriptionCount) : '',
+    isAutoFilled: false,
+    ...overrides,
+  };
+}
+
 function loadDraft(userUid) {
   try {
     const raw = localStorage.getItem(`${DRAFT_KEY}_${userUid}`);
@@ -162,6 +268,42 @@ function ExpandableAdviceRow({ children, onClick }) {
     >
       {children}
     </motion.li>
+  );
+}
+
+function ToothStatusButton({ toothNumber, status, onOpen }) {
+  const getIconColor = () => {
+    if (status === 'decayed') return 'text-red-600';
+    if (status === 'filled') return 'text-teal-600';
+    return 'text-slate-300';
+  };
+
+  const getBorderColor = () => {
+    if (status === 'filled') return 'border-teal-600';
+    if (status === 'decayed') return 'border-red-600';
+    if (status === 'missing') return 'border-slate-400';
+    return 'border-slate-200';
+  };
+
+  return (
+    <div className="flex flex-col items-center flex-1 min-w-0">
+      <button
+        type="button"
+        onClick={onOpen}
+        className={`flex h-9 w-full items-center justify-center rounded border bg-white transition-all duration-150 hover:shadow-sm focus:outline-none ${getBorderColor()}`}
+        aria-label={`Tooth ${toothNumber}`}
+        title={`Tooth ${toothNumber}${status ? ` - ${status}` : ''}`}
+      >
+        {status === 'missing' ? (
+          <span className="material-symbols-outlined text-[16px] text-slate-800">close</span>
+        ) : (
+          <span className={`material-symbols-outlined text-[16px] ${getIconColor()}`} style={{ fontVariationSettings: "'FILL' 1" }}>dentistry</span>
+        )}
+      </button>
+      <span className="mt-0.5 text-[10px] font-medium text-slate-400 tabular-nums">
+        {toothNumber}
+      </span>
+    </div>
   );
 }
 
@@ -285,30 +427,20 @@ export function NewPrescriptionScreen({ onPreview, userSession, initialPatient }
   const [patientForm, setPatientForm] = useState(() => {
     // If navigated from "Prescribe" button with patient data, auto-populate
     if (initialPatient) {
-      return {
-        fullName: initialPatient.fullName || initialPatient.name || '',
-        age: initialPatient.age ? String(initialPatient.age) : '',
-        gender: initialPatient.gender || 'Male',
-        phone: initialPatient.phone || '',
-        dateOfBirth: initialPatient.dateOfBirth || '',
-        bloodGroup: initialPatient.bloodGroup || '',
-        isAutoFilled: true,
-      };
+      return buildPatientForm(initialPatient, { isAutoFilled: true });
     }
-    return draft?.patientForm || {
-      fullName: '',
-      age: '',
-      gender: 'Male',
-      phone: '',
-      dateOfBirth: '',
-      bloodGroup: '',
-      isAutoFilled: false,
-    };
+    return draft?.patientForm || buildPatientForm(DEFAULT_DEMO_PATIENT, { isAutoFilled: true });
   });
 
   const [smartTags, setSmartTags] = useState([]);
   const [selectedTags, setSelectedTags] = useState(draft?.selectedTags || []);
   const [medications, setMedications] = useState(() => (draft?.medications || []).map(normalizeMedicationRow));
+  const [odontogram, setOdontogram] = useState(draft?.odontogram || {});
+  const [extraoralExam, setExtraoralExam] = useState(draft?.extraoralExam || { lips: '', tmj: '', lymphNodes: '' });
+  const [softTissueTags, setSoftTissueTags] = useState(draft?.softTissueTags || []);
+  const [periodontalEvaluationTags, setPeriodontalEvaluationTags] = useState(draft?.periodontalEvaluationTags || []);
+  const [orthodonticEvaluationTags, setOrthodonticEvaluationTags] = useState(draft?.orthodonticEvaluationTags || []);
+  const [activeToothPicker, setActiveToothPicker] = useState(null);
   const medicationInsertModeRef = useRef('manual');
   const previousMedicationCountRef = useRef((draft?.medications || []).length);
   const previousMedicationIdsRef = useRef((draft?.medications || []).map((med) => med.id));
@@ -335,6 +467,7 @@ export function NewPrescriptionScreen({ onPreview, userSession, initialPatient }
   const [loadingTags, setLoadingTags] = useState(false);
   const [lookupStatus, setLookupStatus] = useState('idle');
   const [lookupMessage, setLookupMessage] = useState('');
+  const [isPastHistoryExpanded, setIsPastHistoryExpanded] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [sendMessage, setSendMessage] = useState('');
   const [showPreview, setShowPreview] = useState(false);
@@ -368,9 +501,30 @@ export function NewPrescriptionScreen({ onPreview, userSession, initialPatient }
   }, [medications]);
 
   useEffect(() => {
+    if (!activeToothPicker) return undefined;
+
+    const closePicker = () => setActiveToothPicker(null);
+    window.addEventListener('resize', closePicker);
+    window.addEventListener('scroll', closePicker, true);
+
+    return () => {
+      window.removeEventListener('resize', closePicker);
+      window.removeEventListener('scroll', closePicker, true);
+    };
+  }, [activeToothPicker]);
+
+  useEffect(() => {
+    if (!initialPatient) return;
+    setPatientForm((prev) => ({
+      ...prev,
+      ...buildPatientForm(initialPatient, { isAutoFilled: true }),
+    }));
+  }, [initialPatient]);
+
+  useEffect(() => {
     if (!userSession?.userUid) return;
-    saveDraft(userSession.userUid, { patientForm, selectedTags, medications, investigations, nutritionByTag, lifestyleByTag, customAdvice, customExercise });
-  }, [userSession?.userUid, patientForm, selectedTags, medications, investigations, nutritionByTag, lifestyleByTag, customAdvice, customExercise]);
+    saveDraft(userSession.userUid, { patientForm, selectedTags, medications, odontogram, extraoralExam, softTissueTags, periodontalEvaluationTags, orthodonticEvaluationTags, investigations, nutritionByTag, lifestyleByTag, customAdvice, customExercise });
+  }, [userSession?.userUid, patientForm, selectedTags, medications, odontogram, extraoralExam, softTissueTags, periodontalEvaluationTags, orthodonticEvaluationTags, investigations, nutritionByTag, lifestyleByTag, customAdvice, customExercise]);
 
   useEffect(() => {
     async function loadTags() {
@@ -471,12 +625,7 @@ export function NewPrescriptionScreen({ onPreview, userSession, initialPatient }
         const result = await lookupPatientByPhone(patientForm.phone);
         setPatientForm((prev) => ({
           ...prev,
-          fullName: result?.fullName || '',
-          age: result?.age ? String(result.age) : '',
-          gender: result?.gender || 'Male',
-          dateOfBirth: result?.dateOfBirth || '',
-          bloodGroup: result?.bloodGroup || '',
-          isAutoFilled: true,
+          ...buildPatientForm(result, { phone: prev.phone, isAutoFilled: true }),
         }));
         setLookupStatus('found');
         setLookupMessage('Existing patient found. Details auto-filled.');
@@ -485,12 +634,7 @@ export function NewPrescriptionScreen({ onPreview, userSession, initialPatient }
         if (isNotFound) {
           setPatientForm((prev) => ({
             ...prev,
-            fullName: '',
-            age: '',
-            gender: 'Male',
-            dateOfBirth: '',
-            bloodGroup: '',
-            isAutoFilled: false,
+            ...buildPatientForm({}, { phone: prev.phone }),
           }));
           setLookupStatus('not_found');
           setLookupMessage('Patient not found. Please enter details.');
@@ -508,6 +652,16 @@ export function NewPrescriptionScreen({ onPreview, userSession, initialPatient }
     const phone = normalizePhone(event.target.value);
     setPatientForm((prev) => ({ ...prev, phone }));
   };
+
+  const hasPastHistory = Boolean(
+    patientForm.lastVisitDate ||
+    patientForm.totalVisits ||
+    patientForm.prescriptionCount ||
+    patientForm.dateOfBirth ||
+    patientForm.bloodGroup ||
+    patientForm.complaint ||
+    patientForm.allergies,
+  );
 
   const applyTag = (tagData) => {
     const normalizedName = normalizeTagName(tagData?.tagName);
@@ -596,6 +750,70 @@ export function NewPrescriptionScreen({ onPreview, userSession, initialPatient }
     removeMedication();
   };
 
+  const handleToothStatusSelect = useCallback((toothNumber, nextStatus) => {
+    setOdontogram((prev) => {
+      const next = { ...prev };
+      if (!nextStatus) {
+        delete next[toothNumber];
+        return next;
+      }
+      next[toothNumber] = nextStatus;
+      return next;
+    });
+    setActiveToothPicker(null);
+  }, []);
+
+  const handleToothPickerOpen = useCallback((toothNumber, event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const pickerWidth = 220;
+    const viewportPadding = 20;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const showAbove = spaceBelow < 130 && rect.top > 150;
+    const centeredLeft = rect.left + (rect.width / 2);
+    const clampedLeft = Math.min(
+      Math.max(centeredLeft, (pickerWidth / 2) + viewportPadding),
+      window.innerWidth - (pickerWidth / 2) - viewportPadding,
+    );
+
+    setActiveToothPicker({
+      toothNumber,
+      left: clampedLeft,
+      top: showAbove ? rect.top - 12 : rect.bottom + 12,
+      showAbove,
+    });
+  }, []);
+
+  const toggleSoftTissueTag = useCallback((tag) => {
+    setSoftTissueTags((prev) => (
+      prev.includes(tag)
+        ? prev.filter((item) => item !== tag)
+        : [...prev, tag]
+    ));
+  }, []);
+
+  const togglePeriodontalEvaluationTag = useCallback((tag) => {
+    setPeriodontalEvaluationTags((prev) => (
+      prev.includes(tag)
+        ? prev.filter((item) => item !== tag)
+        : [...prev, tag]
+    ));
+  }, []);
+
+  const toggleOrthodonticEvaluationTag = useCallback((tag) => {
+    setOrthodonticEvaluationTags((prev) => (
+      prev.includes(tag)
+        ? prev.filter((item) => item !== tag)
+        : [...prev, tag]
+    ));
+  }, []);
+
+  const handleExtraoralExamChange = useCallback((field, value) => {
+    setExtraoralExam((prev) => ({
+      ...prev,
+      [field]: prev[field] === value ? '' : value,
+    }));
+  }, []);
+
   const previousMedicationIds = previousMedicationIdsRef.current;
   const isTagEnteringFromEmpty =
     previousMedicationCountRef.current === 0 &&
@@ -681,6 +899,8 @@ export function NewPrescriptionScreen({ onPreview, userSession, initialPatient }
     patientGender: patientForm.gender || 'Male',
     patientDateOfBirth: patientForm.dateOfBirth || null,
     patientBloodGroup: patientForm.bloodGroup || null,
+    patientComplaint: patientForm.complaint || null,
+    patientAllergies: patientForm.allergies || null,
     diagnosis: selectedTags.join(', ') || null,
     symptoms: [],
     medications: medications.map((med) => ({
@@ -1200,43 +1420,66 @@ export function NewPrescriptionScreen({ onPreview, userSession, initialPatient }
 
               {/* Patient Details — editable form (solo doctor) or read-only display (receptionist) */}
               <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_14px_34px_rgba(148,163,184,0.12)]">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="material-symbols-outlined text-[#1f7a5c]">person_add</span>
-                  <h3 className="text-lg font-bold text-slate-800">Patient Details</h3>
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#1f7a5c]">person_add</span>
+                    <h3 className="text-lg font-bold text-slate-800">Patient Details</h3>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 self-start rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-200"
+                    onClick={() => setIsPastHistoryExpanded((prev) => !prev)}
+                    aria-expanded={isPastHistoryExpanded}
+                  >
+                    <span>Past History</span>
+                    <span className="material-symbols-outlined text-[16px]">
+                      {isPastHistoryExpanded ? 'expand_less' : 'expand_more'}
+                    </span>
+                  </button>
                 </div>
 
                 {hasReceptionist ? (
                   /* Read-only patient display for receptionist mode */
                   patientForm.fullName ? (
                     <div className="space-y-3">
-                      <div className="flex items-center gap-3 mb-1">
-                        <div className="h-10 w-10 rounded-full bg-[#1f7a5c]/10 flex items-center justify-center shrink-0">
-                          <span className="material-symbols-outlined text-[#1f7a5c] text-xl">person</span>
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-base font-bold text-slate-900 truncate">{patientForm.fullName}</div>
-                          <div className="text-xs text-slate-500">{patientForm.phone ? `+91 ${patientForm.phone}` : 'No phone'}</div>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+                          <div className="flex min-w-0 items-center gap-3 lg:flex-[1.4]">
+                            <div className="h-10 w-10 rounded-full bg-[#1f7a5c]/10 flex items-center justify-center shrink-0">
+                              <span className="material-symbols-outlined text-[#1f7a5c] text-xl">person</span>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Patient</div>
+                              <div className="text-base font-bold text-slate-900 truncate">{patientForm.fullName}</div>
+                              <div className="text-xs text-slate-500">{patientForm.phone ? `+91 ${patientForm.phone}` : 'No phone'}</div>
+                            </div>
+                          </div>
+
+                          <div className="hidden h-10 w-px bg-slate-200 lg:block" />
+
+                          <div className="flex flex-wrap items-start gap-4 lg:flex-1">
+                            <div>
+                              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Gender</div>
+                              <div className="text-sm font-bold text-slate-800">{patientForm.gender || '—'}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Age</div>
+                              <div className="text-sm font-bold text-slate-800">{patientForm.age || '—'}</div>
+                            </div>
+                            <div className="min-w-[180px] flex-1">
+                              <div className="text-[10px] font-semibold text-red-500 uppercase tracking-wider flex items-center gap-1">
+                                <span className="material-symbols-outlined text-xs">warning</span> Allergies
+                              </div>
+                              <div className="text-sm font-medium text-red-800">{patientForm.allergies || '—'}</div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div className="bg-slate-50 rounded-lg px-3 py-2">
-                          <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Age</div>
-                          <div className="text-sm font-bold text-slate-800">{patientForm.age || '—'}</div>
-                        </div>
-                        <div className="bg-slate-50 rounded-lg px-3 py-2">
-                          <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Gender</div>
-                          <div className="text-sm font-bold text-slate-800">{patientForm.gender || '—'}</div>
-                        </div>
-                        <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                          <div className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider">Complaint</div>
-                          <div className="text-sm font-medium text-amber-900">{patientForm.complaint || '—'}</div>
-                        </div>
-                        <div className="bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                          <div className="text-[10px] font-semibold text-red-500 uppercase tracking-wider flex items-center gap-1">
-                            <span className="material-symbols-outlined text-xs">warning</span> Allergies
-                          </div>
-                          <div className="text-sm font-medium text-red-800">{patientForm.allergies || '—'}</div>
-                        </div>
+
+                      <div className="rounded-xl border border-[#bfe9df] bg-[#eef8f4] px-3 py-2.5">
+                        <div className="text-[10px] font-semibold text-[#1f7a5c] uppercase tracking-wider">Complaints</div>
+                        <div className="text-sm font-medium text-[#245d56]">{patientForm.complaint || '—'}</div>
                       </div>
                     </div>
                   ) : (
@@ -1321,6 +1564,222 @@ export function NewPrescriptionScreen({ onPreview, userSession, initialPatient }
                     </div>
                   </>
                 )}
+
+                <AnimatePresence initial={false}>
+                  {isPastHistoryExpanded ? (
+                    <motion.div
+                      key="patient-past-history-panel"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2, ease: 'easeOut' }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-5 border-t border-slate-100 pt-4">
+                        {hasPastHistory ? (
+                          <>
+                            <div className="flex flex-wrap gap-2.5">
+                              <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
+                                <span className="font-semibold text-slate-400">Last Visit:</span> {formatDisplayDate(patientForm.lastVisitDate)}
+                              </div>
+                              <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
+                                <span className="font-semibold text-slate-400">Visits:</span> {patientForm.totalVisits || '—'}
+                              </div>
+                              <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
+                                <span className="font-semibold text-slate-400">Prescriptions:</span> {patientForm.prescriptionCount || '—'}
+                              </div>
+                            </div>
+
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                              <div className="rounded-xl bg-slate-50 px-4 py-3">
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Date of Birth</p>
+                                <p className="mt-1 text-sm font-bold text-slate-800">{formatDisplayDate(patientForm.dateOfBirth)}</p>
+                              </div>
+                              <div className="rounded-xl bg-slate-50 px-4 py-3">
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Blood Group</p>
+                                <p className="mt-1 text-sm font-bold text-slate-800">{patientForm.bloodGroup || '—'}</p>
+                              </div>
+                              <div className="rounded-xl bg-slate-50 px-4 py-3 sm:col-span-2">
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Known Allergies</p>
+                                <p className="mt-1 text-sm font-bold text-slate-800">{patientForm.allergies || '—'}</p>
+                              </div>
+                              <div className="rounded-xl bg-slate-50 px-4 py-3 sm:col-span-2 xl:col-span-4">
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Previous Complaint</p>
+                                <p className="mt-1 text-sm font-bold text-slate-800">{patientForm.complaint || '—'}</p>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                            No past history available for this patient yet.
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
+              </section>
+
+              <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_14px_34px_rgba(148,163,184,0.12)]">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#1f7a5c]">face</span>
+                  <h3 className="text-lg font-bold text-slate-800">Extraoral Examination</h3>
+                </div>
+
+                <div className="mt-5 rounded-[20px] border border-slate-100 bg-slate-50/70">
+                  {[
+                    { key: 'lips', label: 'Lips', options: EXTRAORAL_EXAM_OPTIONS.lips },
+                    { key: 'tmj', label: 'TMJ', options: EXTRAORAL_EXAM_OPTIONS.tmj },
+                    { key: 'lymphNodes', label: 'Lymph nodes', options: EXTRAORAL_EXAM_OPTIONS.lymphNodes },
+                  ].map((group, index) => (
+                    <div
+                      key={group.key}
+                      className={`flex flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:gap-4 ${
+                        index === 0 ? '' : 'border-t border-slate-200/80'
+                      }`}
+                    >
+                      <div className="md:w-36 md:shrink-0">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{group.label}</p>
+                      </div>
+
+                      <div className="hidden self-stretch md:block md:w-px md:bg-slate-200" />
+
+                      <div className="flex flex-wrap gap-2">
+                        {group.options.map((option) => {
+                          const isActive = extraoralExam[group.key] === option;
+                          return (
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => handleExtraoralExamChange(group.key, option)}
+                              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                                isActive
+                                  ? 'bg-[#1f7a5c] text-white shadow-[0_8px_16px_rgba(31,122,92,0.22)]'
+                                  : 'border border-slate-200 bg-white text-slate-700 hover:border-[#1f7a5c]/35 hover:bg-white'
+                              }`}
+                            >
+                              {option}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_14px_34px_rgba(148,163,184,0.12)]">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#1f7a5c]">medical_information</span>
+                  <h3 className="text-lg font-bold text-slate-800">Soft Tissue Examination</h3>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {SOFT_TISSUE_TAGS.map((tag) => {
+                    const isActive = softTissueTags.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => toggleSoftTissueTag(tag)}
+                        className={`px-3.5 py-1.5 rounded-full text-[13px] font-semibold whitespace-nowrap transition-all shadow-[0_4px_10px_rgba(148,163,184,0.10)] ${
+                          isActive
+                            ? 'bg-[#1f7a5c] text-white shadow-[0_8px_16px_rgba(31,122,92,0.22)]'
+                            : 'border border-slate-200 bg-white text-slate-700 hover:border-[#1f7a5c]/35 hover:bg-white hover:shadow-[0_6px_14px_rgba(148,163,184,0.14)]'
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_14px_34px_rgba(148,163,184,0.12)]">
+                <div className="mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#1f7a5c]">dentistry</span>
+                    <h3 className="text-lg font-bold text-slate-800">Hard Tissue Examination</h3>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {ODONTOGRAM_ROWS.map((row) => (
+                    <div key={row.label}>
+                      <p className="mb-1.5 text-[10px] font-semibold tracking-[0.06em] text-slate-400">{row.label}</p>
+                      <div className="flex gap-1 items-start">
+                        {row.teeth.slice(0, 8).map((toothNumber) => (
+                          <ToothStatusButton
+                            key={toothNumber}
+                            toothNumber={toothNumber}
+                            status={odontogram[toothNumber] || ''}
+                            onOpen={(event) => handleToothPickerOpen(toothNumber, event)}
+                          />
+                        ))}
+                        <div className="w-px self-stretch bg-slate-200 mx-1" />
+                        {row.teeth.slice(8).map((toothNumber) => (
+                          <ToothStatusButton
+                            key={toothNumber}
+                            toothNumber={toothNumber}
+                            status={odontogram[toothNumber] || ''}
+                            onOpen={(event) => handleToothPickerOpen(toothNumber, event)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_14px_34px_rgba(148,163,184,0.12)]">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#1f7a5c]">health_and_safety</span>
+                  <h3 className="text-lg font-bold text-slate-800">Periodontal Evaluation</h3>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {PERIODONTAL_EVALUATION_TAGS.map((tag) => {
+                    const isActive = periodontalEvaluationTags.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => togglePeriodontalEvaluationTag(tag)}
+                        className={`px-3.5 py-1.5 rounded-full text-[13px] font-semibold whitespace-nowrap transition-all shadow-[0_4px_10px_rgba(148,163,184,0.10)] ${
+                          isActive
+                            ? 'bg-[#1f7a5c] text-white shadow-[0_8px_16px_rgba(31,122,92,0.22)]'
+                            : 'border border-slate-200 bg-white text-slate-700 hover:border-[#1f7a5c]/35 hover:bg-white hover:shadow-[0_6px_14px_rgba(148,163,184,0.14)]'
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_14px_34px_rgba(148,163,184,0.12)]">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#1f7a5c]">straighten</span>
+                  <h3 className="text-lg font-bold text-slate-800">Orthodontic Evaluation</h3>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {ORTHODONTIC_EVALUATION_TAGS.map((tag) => {
+                    const isActive = orthodonticEvaluationTags.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => toggleOrthodonticEvaluationTag(tag)}
+                        className={`px-3.5 py-1.5 rounded-full text-[13px] font-semibold whitespace-nowrap transition-all shadow-[0_4px_10px_rgba(148,163,184,0.10)] ${
+                          isActive
+                            ? 'bg-[#1f7a5c] text-white shadow-[0_8px_16px_rgba(31,122,92,0.22)]'
+                            : 'border border-slate-200 bg-white text-slate-700 hover:border-[#1f7a5c]/35 hover:bg-white hover:shadow-[0_6px_14px_rgba(148,163,184,0.14)]'
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
               </section>
 
               <section className="space-y-4">
@@ -1908,6 +2367,70 @@ export function NewPrescriptionScreen({ onPreview, userSession, initialPatient }
         </div>
       </main>
 
+      {activeToothPicker && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[70] cursor-default bg-transparent"
+            onClick={() => setActiveToothPicker(null)}
+            aria-label="Close tooth status picker"
+          />
+          <div
+            className="fixed z-[80] rounded-xl border border-slate-200 bg-white p-3 shadow-[0_18px_40px_rgba(15,23,42,0.18)]"
+            style={{
+              left: activeToothPicker.left,
+              top: activeToothPicker.top,
+              transform: `translate(-50%, ${activeToothPicker.showAbove ? '-100%' : '0'})`,
+            }}
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-semibold text-slate-600">Tooth {activeToothPicker.toothNumber}</p>
+              <button
+                type="button"
+                className="rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                onClick={() => handleToothStatusSelect(activeToothPicker.toothNumber, '')}
+                aria-label="Clear"
+                title="Clear"
+              >
+                <span className="material-symbols-outlined text-[16px]">close</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {TOOTH_STATUS_OPTIONS.map((option) => {
+                const isActive = odontogram[activeToothPicker.toothNumber] === option.value;
+                const getToothColor = () => {
+                  if (option.value === 'decayed') return 'text-red-600';
+                  if (option.value === 'filled') return 'text-teal-600';
+                  if (option.value === 'missing') return 'text-slate-800';
+                  return 'text-slate-300';
+                };
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`flex flex-col items-center gap-1 rounded-lg p-2 transition-all ${
+                      isActive ? 'bg-slate-100 ring-2 ring-slate-300' : 'hover:bg-slate-50'
+                    }`}
+                    onClick={() => handleToothStatusSelect(activeToothPicker.toothNumber, isActive ? '' : option.value)}
+                    aria-pressed={isActive}
+                  >
+                    {option.value === 'missing' ? (
+                      <div className="flex h-5 w-5 items-center justify-center rounded bg-slate-200">
+                        <span className="material-symbols-outlined text-[14px] text-slate-800">close</span>
+                      </div>
+                    ) : (
+                      <span className={`material-symbols-outlined text-[20px] ${getToothColor()}`} style={{ fontVariationSettings: "'FILL' 1" }}>dentistry</span>
+                    )}
+                    <span className="text-[10px] font-medium text-slate-500">{option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
       <div className="sticky bottom-0 z-40 bg-white border-t border-slate-200 px-6 py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
         <div className="max-w-[1400px] mx-auto flex flex-wrap justify-between items-center gap-4">
           <div className="flex items-center gap-4">
@@ -1979,9 +2502,15 @@ export function NewPrescriptionScreen({ onPreview, userSession, initialPatient }
                 className="flex-1 px-4 py-3.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors border-l border-slate-100"
                 type="button"
                 onClick={() => {
-                  setPatientForm({ fullName: '', age: '', gender: 'Male', phone: '', dateOfBirth: '', bloodGroup: '', isAutoFilled: false });
+                  setPatientForm(buildPatientForm());
                   setSelectedTags([]);
                   setMedications([]);
+                  setOdontogram({});
+                  setExtraoralExam({ lips: '', tmj: '', lymphNodes: '' });
+                  setSoftTissueTags([]);
+                  setPeriodontalEvaluationTags([]);
+                  setOrthodonticEvaluationTags([]);
+                  setActiveToothPicker(null);
                   setNutritionByTag({});
                   setLifestyleByTag({});
                   setCustomAdvice('');
